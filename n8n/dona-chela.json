@@ -1,0 +1,756 @@
+{
+ "name": "Doña Chela — abuelita antiestafa",
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "chela",
+    "responseMode": "responseNode",
+    "options": {
+     "allowedOrigins": "*"
+    }
+   },
+   "id": "85ac7b69-38fa-4867-9485-f473c00b7220",
+   "name": "Web: mensaje al chat",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    0
+   ],
+   "webhookId": "3fd9dd18-e4be-42af-ad21-fffa483d7a4a"
+  },
+  {
+   "parameters": {
+    "jsCode": "const P = \"Eres Do\\u00f1a Chela, una abuelita cruce\\u00f1a de 78 a\\u00f1os (Santa Cruz, Bolivia). Un ESTAFADOR te escribe. Tu misi\\u00f3n secreta:\\n1) Hacerle perder el mayor tiempo posible, con calidez y humor: tu nieto Brayan, la novela de las 3, los porotos en el fuego, el gato, los lentes perdidos, el aud\\u00edfono, la Virgen de Cotoca.\\n2) Sacarle, sin que sospeche, su n\\u00famero de cuenta, banco, nombre del titular, celular y QR de cobro. Lee mal los n\\u00fameros a prop\\u00f3sito para que los repita.\\nReglas: habla en espa\\u00f1ol cruce\\u00f1o con voseo (mir\\u00e1, decime, m'hijito, ve, pues). Responde en 1 a 3 frases cortas, como chat. Nunca des datos reales, c\\u00f3digos, claves ni transfieras de verdad (puedes prometer que ir\\u00e1s al banco). No insultes ni amenaces. Si te piden un c\\u00f3digo, inventa excusas.\\nResponde SOLO con JSON v\\u00e1lido, sin texto extra: {\\\"respuesta\\\":\\\"lo que dice Chela\\\",\\\"datos\\\":[{\\\"tipo\\\":\\\"cuenta|banco|titular|celular|qr\\\",\\\"valor\\\":\\\"...\\\"}]} donde datos son los que el estafador revel\\u00f3 en su \\u00daLTIMO mensaje (lista vac\\u00eda si ninguno).\";\nconst h = $input.first().json;\nconst body = h.body || h;\nconst hist = (body.historial || []).slice(-20);\nconst msgs = [];\nfor (const m of [...hist, { rol: 'estafador', texto: body.mensaje }]) {\n  const role = m.rol === 'chela' ? 'assistant' : 'user';\n  if (!m.texto) continue;\n  if (msgs.length && msgs[msgs.length - 1].role === role) msgs[msgs.length - 1].content += '\\n' + m.texto;\n  else msgs.push({ role, content: m.texto });\n}\nwhile (msgs.length && msgs[0].role !== 'user') msgs.shift();\nconst ya = body.datos ? '\\nYa anotaste: ' + JSON.stringify(body.datos) + '. Pesca lo que falte.' : '';\nreturn [{ json: { chat_id: body.chat_id, peticion: { model: 'claude-haiku-5-5', max_tokens: 300, system: P + ya, messages: msgs } } }];"
+   },
+   "id": "119af7f1-7025-4905-9e4a-163207396d8f",
+   "name": "Armar pedido",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.anthropic.com/v1/messages",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "anthropic-version",
+       "value": "2023-06-01"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify($json.peticion) }}",
+    "options": {
+     "timeout": 20000
+    }
+   },
+   "id": "c8b40e65-7005-49d0-a2b2-39fd2a2b7f9c",
+   "name": "Claude: Doña Chela",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    440,
+    0
+   ],
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "",
+     "name": "Anthropic (x-api-key)"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const t = ($input.first().json.content || []).map(c => c.text || '').join('');\nlet j = {};\ntry { j = JSON.parse(t.match(/\\{[\\s\\S]*\\}/)[0]); } catch (e) { j = { respuesta: t || 'Ay, se me cortó, m\\'hijito. ¿Qué me decías?', datos: [] }; }\nreturn [{ json: { respuesta: j.respuesta, datos: Array.isArray(j.datos) ? j.datos : [] } }];"
+   },
+   "id": "6d5f80c8-830f-482a-8ba6-7891c539e8c7",
+   "name": "Leer respuesta",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "={{ $json }}",
+    "options": {}
+   },
+   "id": "0e052420-2945-41b7-a1ce-8ad53f28fe8a",
+   "name": "Responder a la web",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.1,
+   "position": [
+    880,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "chela-caso",
+    "responseMode": "responseNode",
+    "options": {
+     "allowedOrigins": "*"
+    }
+   },
+   "id": "b060bd8f-2829-4d1f-92ee-715ab2c4aeda",
+   "name": "Web: denunciar caso",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    240
+   ],
+   "webhookId": "902464fc-532b-405b-8c03-e3eae269c8db"
+  },
+  {
+   "parameters": {
+    "jsCode": "const crypto = require('crypto');\nconst src = $input.first().json; const c = { ...(src.body || src.caso || src) };\nconst ok = ['creado','canal','guion','cuenta','celular','banco','titular','qr','minutos'];\nconst caso = {}; for (const k of ok) if (c[k] !== undefined) caso[k] = c[k];\ncaso.creado = caso.creado || new Date().toISOString();\ncaso.hash = crypto.createHash('sha256').update(JSON.stringify([caso.cuenta||null, caso.celular||null, caso.banco||null, caso.titular||null, caso.guion||null, caso.creado])).digest('hex');\nreturn [{ json: caso }];"
+   },
+   "id": "d81ce213-9c03-4c57-99c2-99686aab4e75",
+   "name": "Limpiar caso",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    240
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "create",
+    "tableId": "casos",
+    "dataToSend": "autoMapInputData"
+   },
+   "id": "7096501f-773b-4379-a964-5757e063732b",
+   "name": "Supabase: guardar caso",
+   "type": "n8n-nodes-base.supabase",
+   "typeVersion": 1,
+   "position": [
+    440,
+    240
+   ],
+   "credentials": {
+    "supabaseApi": {
+     "id": "",
+     "name": "Supabase (service_role)"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "={{ { id: $json.id, hash: $json.hash } }}",
+    "options": {}
+   },
+   "id": "15d5a76a-4407-4ba7-8823-47f2f8853a9f",
+   "name": "Responder id",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.1,
+   "position": [
+    660,
+    240
+   ]
+  },
+  {
+   "parameters": {
+    "updates": [
+     "message"
+    ],
+    "additionalFields": {}
+   },
+   "id": "e40d0b63-8388-4fc3-a2da-0ec9eddeb51b",
+   "name": "Telegram: mensaje",
+   "type": "n8n-nodes-base.telegramTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    0,
+    520
+   ],
+   "webhookId": "0a335991-4b4d-4c4b-9791-4ace9280d9e1",
+   "credentials": {
+    "telegramApi": {
+     "id": "",
+     "name": "Telegram Doña Chela"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const m = $input.first().json.message || {};\nconst chat_id = m.chat?.id; const txt = (m.text || m.caption || '').trim();\nconst st = $getWorkflowStaticData('global'); st.chats = st.chats || {};\nconst c = st.chats[chat_id] = st.chats[chat_id] || { historial: [], datos: {}, inicio: Date.now() };\nif (!txt || txt === '/start' || txt === '/ayuda')\n  return [{ json: { accion: 'texto', chat_id, texto: '👵 ¡Hola, m\\'hijito! Soy Doña Chela.\\n\\nReenvíame lo que te escribe el estafador y te digo qué contestarle. Yo lo entretengo y le saco la cuenta.\\n\\n/verificar 70012345 — ver si una cuenta o celular es de estafador\\n/denunciar — mandarlo a la lista negra\\n/nuevo — empezar con otro estafador' } }];\nif (txt === '/nuevo') { st.chats[chat_id] = { historial: [], datos: {}, inicio: Date.now() }; return [{ json: { accion: 'texto', chat_id, texto: 'Listo, cuaderno nuevo. Pasame al siguiente estafador. 📒' } }]; }\nif (txt.startsWith('/verificar')) {\n  const q = txt.replace(/\\D/g, '');\n  if (q.length < 7) return [{ json: { accion: 'texto', chat_id, texto: 'Escribime el número así: /verificar 70012345' } }];\n  return [{ json: { accion: 'verificar', chat_id, q, filtro: `or=(cuenta.eq.${q},celular.eq.${q})` } }];\n}\nif (txt === '/denunciar') {\n  const d = c.datos;\n  if (!d.cuenta && !d.celular) return [{ json: { accion: 'texto', chat_id, texto: 'Todavía no le saqué ni cuenta ni celular. Sigamos charlando con él. 😉' } }];\n  const t = c.historial.filter(h => h.rol === 'estafador').map(h => h.texto).join(' ').toLowerCase();\n  const guion = /nieto|abuel|accidente/.test(t) ? 'Falso nieto' : /premio|sorteo|gan[oó]/.test(t) ? 'Premio falso' : /bloque|banco|tarjeta|c[oó]digo/.test(t) ? 'Cuenta bloqueada' : 'Otro';\n  return [{ json: { accion: 'denunciar', chat_id, caso: { canal: 'telegram', guion, cuenta: d.cuenta || null, celular: d.celular || null, banco: d.banco || null, titular: d.titular || null, qr: !!d.qr, minutos: Math.max(1, Math.round((Date.now() - c.inicio) / 60000)) } } }];\n}\nc.historial.push({ rol: 'estafador', texto: txt });\nreturn [{ json: { accion: 'chela', chat_id, body: { chat_id, historial: c.historial.slice(0, -1), mensaje: txt, datos: c.datos } } }];"
+   },
+   "id": "1af32e97-1697-4bd2-8062-2c81542df32f",
+   "name": "Telegram: Router",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "rules": {
+     "values": [
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "typeValidation": "strict",
+         "version": 2
+        },
+        "combinator": "and",
+        "conditions": [
+         {
+          "leftValue": "={{ $json.accion }}",
+          "rightValue": "texto",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ]
+       },
+       "renameOutput": true,
+       "outputKey": "texto"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "typeValidation": "strict",
+         "version": 2
+        },
+        "combinator": "and",
+        "conditions": [
+         {
+          "leftValue": "={{ $json.accion }}",
+          "rightValue": "verificar",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ]
+       },
+       "renameOutput": true,
+       "outputKey": "verificar"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "typeValidation": "strict",
+         "version": 2
+        },
+        "combinator": "and",
+        "conditions": [
+         {
+          "leftValue": "={{ $json.accion }}",
+          "rightValue": "chela",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ]
+       },
+       "renameOutput": true,
+       "outputKey": "chela"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "typeValidation": "strict",
+         "version": 2
+        },
+        "combinator": "and",
+        "conditions": [
+         {
+          "leftValue": "={{ $json.accion }}",
+          "rightValue": "denunciar",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ]
+       },
+       "renameOutput": true,
+       "outputKey": "denunciar"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "5a9b6471-76cb-4546-b68c-e592e0aa9ad4",
+   "name": "¿Qué hago?",
+   "type": "n8n-nodes-base.switch",
+   "typeVersion": 3.2,
+   "position": [
+    440,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "chatId": "={{ $json.chat_id }}",
+    "text": "={{ $json.texto }}",
+    "additionalFields": {
+     "appendAttribution": false
+    }
+   },
+   "id": "b87ebbfe-8dc9-470e-9008-3677abf6f1e3",
+   "name": "Enviar Telegram",
+   "type": "n8n-nodes-base.telegram",
+   "typeVersion": 1.2,
+   "position": [
+    1320,
+    520
+   ],
+   "credentials": {
+    "telegramApi": {
+     "id": "",
+     "name": "Telegram Doña Chela"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "operation": "getAll",
+    "tableId": "casos",
+    "returnAll": true,
+    "filterType": "string",
+    "filterString": "={{ $json.filtro }}"
+   },
+   "id": "dcc8a540-0884-4a2d-9d08-525e8350d024",
+   "name": "Supabase: buscar",
+   "type": "n8n-nodes-base.supabase",
+   "typeVersion": 1,
+   "position": [
+    660,
+    420
+   ],
+   "credentials": {
+    "supabaseApi": {
+     "id": "",
+     "name": "Supabase (service_role)"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "jsCode": "const q = $('Telegram: Router').first().json;\nconst filas = $input.all().map(i => i.json).filter(f => f.id);\nconst texto = filas.length\n  ? `🚫 ¡NO transfieras! ${q.q} está en la lista negra (${filas.length} reporte${filas.length > 1 ? 's' : ''}): ${filas[0].guion}${filas[0].titular ? ', a nombre de ' + filas[0].titular : ''}.`\n  : `✅ ${q.q} no está en mi lista. Igual desconfiá si te apuran o te piden códigos.`;\nreturn [{ json: { chat_id: q.chat_id, texto } }];"
+   },
+   "id": "5836cb8d-49a3-4553-867b-44c9e9ce53d2",
+   "name": "Respuesta verificar",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    880,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "mode": "raw",
+    "jsonOutput": "={{ $json.body }}",
+    "options": {}
+   },
+   "id": "c92232ff-6f3e-40f3-a49f-1c830dd16de0",
+   "name": "Pedido Telegram",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    660,
+    560
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "const P = \"Eres Do\\u00f1a Chela, una abuelita cruce\\u00f1a de 78 a\\u00f1os (Santa Cruz, Bolivia). Un ESTAFADOR te escribe. Tu misi\\u00f3n secreta:\\n1) Hacerle perder el mayor tiempo posible, con calidez y humor: tu nieto Brayan, la novela de las 3, los porotos en el fuego, el gato, los lentes perdidos, el aud\\u00edfono, la Virgen de Cotoca.\\n2) Sacarle, sin que sospeche, su n\\u00famero de cuenta, banco, nombre del titular, celular y QR de cobro. Lee mal los n\\u00fameros a prop\\u00f3sito para que los repita.\\nReglas: habla en espa\\u00f1ol cruce\\u00f1o con voseo (mir\\u00e1, decime, m'hijito, ve, pues). Responde en 1 a 3 frases cortas, como chat. Nunca des datos reales, c\\u00f3digos, claves ni transfieras de verdad (puedes prometer que ir\\u00e1s al banco). No insultes ni amenaces. Si te piden un c\\u00f3digo, inventa excusas.\\nResponde SOLO con JSON v\\u00e1lido, sin texto extra: {\\\"respuesta\\\":\\\"lo que dice Chela\\\",\\\"datos\\\":[{\\\"tipo\\\":\\\"cuenta|banco|titular|celular|qr\\\",\\\"valor\\\":\\\"...\\\"}]} donde datos son los que el estafador revel\\u00f3 en su \\u00daLTIMO mensaje (lista vac\\u00eda si ninguno).\";\nconst h = $input.first().json;\nconst body = h.body || h;\nconst hist = (body.historial || []).slice(-20);\nconst msgs = [];\nfor (const m of [...hist, { rol: 'estafador', texto: body.mensaje }]) {\n  const role = m.rol === 'chela' ? 'assistant' : 'user';\n  if (!m.texto) continue;\n  if (msgs.length && msgs[msgs.length - 1].role === role) msgs[msgs.length - 1].content += '\\n' + m.texto;\n  else msgs.push({ role, content: m.texto });\n}\nwhile (msgs.length && msgs[0].role !== 'user') msgs.shift();\nconst ya = body.datos ? '\\nYa anotaste: ' + JSON.stringify(body.datos) + '. Pesca lo que falte.' : '';\nreturn [{ json: { chat_id: body.chat_id, peticion: { model: 'claude-haiku-5-5', max_tokens: 300, system: P + ya, messages: msgs } } }];"
+   },
+   "id": "21cddd79-8bd9-42e4-b6da-e3ac4c57c8dc",
+   "name": "Armar pedido TG",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    880,
+    560
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.anthropic.com/v1/messages",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "anthropic-version",
+       "value": "2023-06-01"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify($json.peticion) }}",
+    "options": {
+     "timeout": 20000
+    }
+   },
+   "id": "a13c7b8c-faed-4eb5-b134-ac2607926fc4",
+   "name": "Claude TG",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1100,
+    560
+   ],
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "",
+     "name": "Anthropic (x-api-key)"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const t = ($input.first().json.content || []).map(c => c.text || '').join('');\nlet j = {};\ntry { j = JSON.parse(t.match(/\\{[\\s\\S]*\\}/)[0]); } catch (e) { j = { respuesta: t || 'Ay, se me cortó, m\\'hijito. ¿Qué me decías?', datos: [] }; }\nreturn [{ json: { respuesta: j.respuesta, datos: Array.isArray(j.datos) ? j.datos : [] } }];"
+   },
+   "id": "742b45ed-7249-474a-af09-6c140bd5db1f",
+   "name": "Leer respuesta TG",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1100,
+    700
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "const r = $input.first().json; const chat_id = $('Telegram: Router').first().json.chat_id;\nconst st = $getWorkflowStaticData('global'); const c = st.chats[chat_id];\nc.historial.push({ rol: 'chela', texto: r.respuesta });\nconst nuevos = [];\nfor (const d of r.datos) if (d && d.valor && !c.datos[d.tipo]) { c.datos[d.tipo] = d.valor; nuevos.push(d.tipo + ': ' + d.valor); }\nlet texto = 'Contestale esto 👇\\n\\n' + r.respuesta;\nif (nuevos.length) texto += '\\n\\n📒 Anoté → ' + nuevos.join(' · ') + '\\nCuando quieras: /denunciar';\nreturn [{ json: { chat_id, texto } }];"
+   },
+   "id": "83f1aa77-fd17-41b6-8146-0d15f108ce30",
+   "name": "Guardar charla",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1320,
+    700
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "const crypto = require('crypto');\nconst src = $input.first().json; const c = { ...(src.body || src.caso || src) };\nconst ok = ['creado','canal','guion','cuenta','celular','banco','titular','qr','minutos'];\nconst caso = {}; for (const k of ok) if (c[k] !== undefined) caso[k] = c[k];\ncaso.creado = caso.creado || new Date().toISOString();\ncaso.hash = crypto.createHash('sha256').update(JSON.stringify([caso.cuenta||null, caso.celular||null, caso.banco||null, caso.titular||null, caso.guion||null, caso.creado])).digest('hex');\nreturn [{ json: caso }];"
+   },
+   "id": "0fa5a165-7579-4c3f-9bca-7b8ecdee137d",
+   "name": "Caso TG",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    760
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "create",
+    "tableId": "casos",
+    "dataToSend": "autoMapInputData"
+   },
+   "id": "c2b02b09-32dd-4ac2-81cb-a6ee4fe7a481",
+   "name": "Supabase: guardar caso TG",
+   "type": "n8n-nodes-base.supabase",
+   "typeVersion": 1,
+   "position": [
+    880,
+    760
+   ],
+   "credentials": {
+    "supabaseApi": {
+     "id": "",
+     "name": "Supabase (service_role)"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const r = $input.first().json; const chat_id = $('Telegram: Router').first().json.chat_id;\nconst st = $getWorkflowStaticData('global'); st.chats[chat_id] = { historial: [], datos: {}, inicio: Date.now() };\nreturn [{ json: { chat_id, texto: `✅ ¡Atrapado! Quedó en la lista negra pública.\\nHuella: ${r.hash}\\nLe hice perder ${r.minutos} min. Pasame al siguiente: el cuaderno ya está limpio.` } }];"
+   },
+   "id": "1141f44b-29fe-4ce2-ad6c-a08680a08a60",
+   "name": "Confirmar denuncia",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1100,
+    860
+   ]
+  }
+ ],
+ "connections": {
+  "Web: mensaje al chat": {
+   "main": [
+    [
+     {
+      "node": "Armar pedido",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Armar pedido": {
+   "main": [
+    [
+     {
+      "node": "Claude: Doña Chela",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Claude: Doña Chela": {
+   "main": [
+    [
+     {
+      "node": "Leer respuesta",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Leer respuesta": {
+   "main": [
+    [
+     {
+      "node": "Responder a la web",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Web: denunciar caso": {
+   "main": [
+    [
+     {
+      "node": "Limpiar caso",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Limpiar caso": {
+   "main": [
+    [
+     {
+      "node": "Supabase: guardar caso",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Supabase: guardar caso": {
+   "main": [
+    [
+     {
+      "node": "Responder id",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Telegram: mensaje": {
+   "main": [
+    [
+     {
+      "node": "Telegram: Router",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Telegram: Router": {
+   "main": [
+    [
+     {
+      "node": "¿Qué hago?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "¿Qué hago?": {
+   "main": [
+    [
+     {
+      "node": "Enviar Telegram",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Supabase: buscar",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Pedido Telegram",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Caso TG",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Supabase: buscar": {
+   "main": [
+    [
+     {
+      "node": "Respuesta verificar",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Respuesta verificar": {
+   "main": [
+    [
+     {
+      "node": "Enviar Telegram",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Pedido Telegram": {
+   "main": [
+    [
+     {
+      "node": "Armar pedido TG",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Armar pedido TG": {
+   "main": [
+    [
+     {
+      "node": "Claude TG",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Claude TG": {
+   "main": [
+    [
+     {
+      "node": "Leer respuesta TG",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Leer respuesta TG": {
+   "main": [
+    [
+     {
+      "node": "Guardar charla",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Guardar charla": {
+   "main": [
+    [
+     {
+      "node": "Enviar Telegram",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Caso TG": {
+   "main": [
+    [
+     {
+      "node": "Supabase: guardar caso TG",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Supabase: guardar caso TG": {
+   "main": [
+    [
+     {
+      "node": "Confirmar denuncia",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Confirmar denuncia": {
+   "main": [
+    [
+     {
+      "node": "Enviar Telegram",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}
